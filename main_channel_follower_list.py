@@ -1,5 +1,3 @@
-import pprint
-
 import openpyxl
 
 from channel import main_channel_id
