@@ -6,15 +6,15 @@ import openpyxl.utils
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from channel import channel_ids, channel_list
-from twitch_api import get_channel_follows, get_cred
+from channel import channel_ids
+from twitch_api import get_channel_follows
 
 '''
 Gets the follows of users and writes them into an excel file
 '''
 
 
-def fill(fid: int, file_name: str, from_pos: int, user_ids: [str], l: Lock, cred: (str, str)):
+def fill(fid: int, file_name: str, sheet_name: str, from_pos: int, user_ids: [str], l: Lock, cred: (str, str)):
     fill_id = str(fid)  # 'fill_' + str(start).rjust(6, '0') + '_' + str(end).rjust(6, '0')
     print(fill_id + ' start')
     s = time.time()
@@ -49,7 +49,7 @@ def fill(fid: int, file_name: str, from_pos: int, user_ids: [str], l: Lock, cred
     sav = time.time()
     print(fill_id + ' saving')
     workbook2 = openpyxl.open(file_name + 'B.xlsx')
-    FollowChannelRelation: Worksheet = workbook2[FollowChannelRelationName]
+    FollowChannelRelation: Worksheet = workbook2[sheet_name]
     for key in t:
         FollowChannelRelation[key] = t[key]
     workbook2.save(file_name + 'B.xlsx')
@@ -69,7 +69,7 @@ Starts 8 processes with each sub list
 '''
 
 
-def multi(file_name: str, sheet_name: str, u_ids: [str], offset: int, total_num_of_data: int, cred: [(str, str)]):
+def multi(file_name: str, sheet_name: str, u_ids: [str], offset: int, total_num_of_data: int, cred: (str, str)):
     start = time.time()
     wb = openpyxl.Workbook()
     wb.create_sheet(sheet_name)
@@ -86,10 +86,11 @@ def multi(file_name: str, sheet_name: str, u_ids: [str], offset: int, total_num_
         p = Process(target=fill, args=(
             i,
             file_name,
+            sheet_name,
             from_pos,
             u_ids[(data_size * i) + offset:data_size + (data_size * i) + offset],
             lock,
-            cred[i % 4]))
+            cred))
         p.start()
         processes.append(p)
 
