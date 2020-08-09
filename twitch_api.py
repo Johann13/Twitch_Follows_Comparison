@@ -81,7 +81,7 @@ class TwitchFollowRelation:
 
     @classmethod
     def from_line(cls, line: str):
-        words = list(filter(lambda x: x != '', line.split(';')))
+        words = list(filter(lambda x: x != '', line.split(' ')))
         index = int(words[0])
         from_id = words[1]
         from_name = words[2]
@@ -147,7 +147,6 @@ def twitch_api_post(
 
 def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page=None) -> (
         [TwitchFollowRelation], str, int):
-    print(f'page={page}')
     if page is None:
         resp = twitch_api_get(
             twitch_url='https://api.twitch.tv/helix/users/follows',
@@ -164,9 +163,6 @@ def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page
         print('sleep')
         time.sleep(32)
         return __get_twitch_follower_relation(cred=cred, twitch_id=twitch_id, page=page)
-
-    print(resp.json)
-    print(page)
     data = resp.json['data']
     cursor = None
     if 'cursor' in resp.json['pagination']:
@@ -189,9 +185,17 @@ def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max_re
         total = resp[2]
         cursor = resp[1]
         result += resp[0]
-        print(str(len(result)) + '/' + str(max_results))
 
     return result
+
+
+def get_follower_count(cred: TwitchCredentials, twitch_id: str, ) -> int:
+    resp = twitch_api_get(
+        twitch_url='https://api.twitch.tv/helix/users/follows',
+        cred=cred,
+        params={'to_id': twitch_id, 'first': 1},
+    )
+    return resp.json['total']
 
 
 '''
