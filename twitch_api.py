@@ -147,8 +147,8 @@ def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page
             params={'to_id': twitch_id, 'first': 100, 'after': page},
         )
     if resp.should_sleep:
-        time.sleep(10)
         print('sleep')
+        time.sleep(32)
         return __get_twitch_follower_relation(cred=cred, twitch_id=twitch_id, page=page)
 
     data = resp.json['data']
@@ -177,7 +177,7 @@ def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max=No
         print(cursor)
         print(str(len(result)) + '/' + str(total))
 
-    return list(reversed(result))
+    return result
 
 
 '''
