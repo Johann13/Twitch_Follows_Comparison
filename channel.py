@@ -62,9 +62,8 @@ channel_list: [(str, str)] = [
 ]
 
 todo = [
-    ('19309473', 'Pyrionflax'),
     ('26538483', 'sips_'),
-    ('20786541', 'Yogscast'),
+    #('20786541', 'Yogscast'),
 ]
 
 # converting the list to a map

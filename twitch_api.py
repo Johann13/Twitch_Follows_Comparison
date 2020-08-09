@@ -55,9 +55,10 @@ class TwitchUser:
 
 class TwitchFollowRelation:
 
-    def __init__(self, from_id: str, from_name: str,
+    def __init__(self, index: int, from_id: str, from_name: str,
                  to_id: str, to_name: str,
                  followed_at: str, page: str):
+        self.index = index
         self.from_user = TwitchUser(from_id, from_name)
         self.to_user = TwitchUser(to_id, to_name)
         self.from_id = from_id
@@ -76,18 +77,22 @@ class TwitchFollowRelation:
         to_name = data['to_name']
         followed_at = data['followed_at']
         page = page
-        return cls(from_id, from_name, to_id, to_name, followed_at, page)
+        return cls(0, from_id, from_name, to_id, to_name, followed_at, page)
 
     @classmethod
     def from_line(cls, line: str):
-        words = list(filter(lambda x: x != '', line.split(' ')))
+        words = list(filter(lambda x: x != '', line.split(';')))
+        index = int(words[0])
         from_id = words[1]
         from_name = words[2]
         to_id = words[3]
         to_name = words[4]
         followed_at = words[5]
-        page = words[6]
-        return cls(from_id, from_name, to_id, to_name, followed_at, page)
+        if len(words) == 7:
+            page = words[6]
+        else:
+            page = None
+        return cls(index, from_id, from_name, to_id, to_name, followed_at, page)
 
     def get_date(self):
         return datetime.strptime(self.followed_at, '%Y-%m-%dT%H:%M:%SZ')
@@ -104,6 +109,14 @@ class TwitchFollowRelation:
 
     def to_string(self):
         return f'{self.from_id} {self.from_name} {self.to_id} {self.to_name} {self.followed_at} {self.page}'
+
+    def __eq__(self, other):
+        if other is TwitchFollowRelation:
+            return self.from_id == other.from_id and self.to_id == other.to_id
+        return False
+
+    def __hash__(self):
+        return int(f'{self.from_id}{self.to_id}')
 
 
 def twitch_api_get(
@@ -134,6 +147,7 @@ def twitch_api_post(
 
 def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page=None) -> (
         [TwitchFollowRelation], str, int):
+    print(f'page={page}')
     if page is None:
         resp = twitch_api_get(
             twitch_url='https://api.twitch.tv/helix/users/follows',
@@ -151,8 +165,9 @@ def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page
         time.sleep(32)
         return __get_twitch_follower_relation(cred=cred, twitch_id=twitch_id, page=page)
 
-    data = resp.json['data']
     print(resp.json)
+    print(page)
+    data = resp.json['data']
     cursor = None
     if 'cursor' in resp.json['pagination']:
         cursor = resp.json['pagination']['cursor']
@@ -160,22 +175,21 @@ def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page
     return list(map(lambda d: TwitchFollowRelation.from_api(d, page), data)), cursor, resp.json['total']
 
 
-def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max=None, cursor='') \
+def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max_results=None, cursor='') \
         -> [TwitchFollowRelation]:
     total: int = 0
     result: [TwitchFollowRelation] = []
     while len(result) < total or len(result) == 0:
         if cursor is None:
             break
-        if max is not None:
-            if len(result) >= max:
+        if max_results is not None:
+            if len(result) >= max_results:
                 break
         resp = __get_twitch_follower_relation(cred=cred, twitch_id=twitch_id, page=cursor)
         total = resp[2]
         cursor = resp[1]
         result += resp[0]
-        print(cursor)
-        print(str(len(result)) + '/' + str(total))
+        print(str(len(result)) + '/' + str(max_results))
 
     return result
 
