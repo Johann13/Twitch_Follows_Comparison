@@ -81,15 +81,17 @@ class TwitchFollowRelation:
 
     @classmethod
     def from_line(cls, line: str):
-        words = list(filter(lambda x: x != '', line.split(' ')))
+        words = list(map(lambda s: s.replace(' ', ''), line.split(' ')))
+        if len(words) > 7:
+            words = list(filter(lambda s: s != '', words))
         index = int(words[0])
-        from_id = words[1]
-        from_name = words[2]
-        to_id = words[3]
-        to_name = words[4]
-        followed_at = words[5]
+        from_id = words[1].replace('\n', '')
+        from_name = words[2].replace('\n', '')
+        to_id = words[3].replace('\n', '')
+        to_name = words[4].replace('\n', '')
+        followed_at = words[5].replace('\n', '')
         if len(words) == 7:
-            page = words[6]
+            page = words[6].replace('\n', '')
         else:
             page = None
         return cls(index, from_id, from_name, to_id, to_name, followed_at, page)
@@ -168,7 +170,7 @@ def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page
     if 'cursor' in resp.json['pagination']:
         cursor = resp.json['pagination']['cursor']
 
-    return list(map(lambda d: TwitchFollowRelation.from_api(d, page), data)), cursor, resp.json['total']
+    return list(map(lambda d: TwitchFollowRelation.from_api(d, cursor), data)), cursor, resp.json['total']
 
 
 def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max_results=None, cursor='') \
@@ -178,6 +180,8 @@ def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max_re
     while len(result) < total or len(result) == 0:
         if cursor is None:
             break
+        else:
+            cursor = cursor.replace('\n', '')
         if max_results is not None:
             if len(result) >= max_results:
                 break

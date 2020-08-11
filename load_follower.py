@@ -1,87 +1,101 @@
+import os
 from multiprocessing import Process
 
-from follower_count import get_total_follower_count
+from follower_count import get_balanced_channel_lists_2, get_total_follower_count
 from load_follower_from_file import load_follower_from_file
 from twitch_api import get_cred, get_twitch_follower_relation, TwitchFollowRelation, TwitchCredentials
-from twitch_cred import cred_list
+from twitch_cred import cred_list, clientID, secret
 
 
-def load_follower_and_write_to_file(cred: TwitchCredentials, twitch_id: str, max_results=None):
-    follows_load = load_follower_from_file(twitch_id)
-    if len(follows_load) == 0:
-        cursor = ''
+def channel_process(cred: TwitchCredentials, channel: (str, str, int), max_results=1000):
+    twitch_id, channel_name, channel_follower_count = channel
+    if not os.path.exists(f'data/follower/{twitch_id}.txt'):
+        open(f'data/follower/{twitch_id}.txt', 'w').close()
+    follower = load_follower_from_file(f'data/follower/{twitch_id}.txt')
+    current_count = len(follower)
+    if len(follower) >= channel_follower_count:
+        print(f'Skip {channel_name}')
+        return
     else:
-        cursor = follows_load[-1].page
-    follows: [TwitchFollowRelation] = get_twitch_follower_relation(cred=cred,
-                                                                   twitch_id=twitch_id,
-                                                                   cursor=cursor,
-                                                                   max_results=max_results)
+        print(f'{len(follower)} in file, {channel_follower_count} online')
+    if len(follower) > 0:
+        print(f'Already loaded {current_count}')
+        cursor = follower[-1].page
+    else:
+        cursor = ''
 
-    with open(f"data/{twitch_id}.txt", "a", encoding='utf-16') as file:
-        for index, follow in enumerate(follows):
-            if follow not in follows_load:
-                s = follow.to_string().replace('\n', '')
-                if len(follows_load) == 0:
-                    file.write(str(index).zfill(7) + ' ' + s)
-                else:
-                    file.write(str(index + follows_load[-1].index + 1).zfill(7) + ' ' + s)
-                file.write('\n')
-            else:
-                print(f'DUPLICATE {follow}')
+    print(f'Starting {twitch_id} - {channel_name} - {channel_follower_count}')
+    while len(follower) < channel_follower_count:
 
+        print(f'Load Data - {channel_name} - {cursor}')
+        result: [TwitchFollowRelation] = get_twitch_follower_relation(
+            cred=cred,
+            twitch_id=twitch_id,
+            cursor=cursor,
+            max_results=max_results
+        )
 
-def chunks(lst, n):
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        if len(result) == 0:
+            print(f'No more follows found - {channel_name}')
+            break
 
+        print(f'Write File - {channel_name}')
+        data = ''
+        for i, follow in enumerate(result):
+            data += f'{i + current_count} {follow.to_string()}\n'
 
-def channel_process(cred: TwitchCredentials, channel: (str, str, int)):
-    twitch_id = channel[0]
-    channel_name = channel[1]
-    channel_follower_count = channel[2]
-    print(f'Channel {channel_name}')
-    try:
-        f = open(f"data/{twitch_id}.txt", "a", encoding='utf-16')
-        f.close()
-    except FileExistsError:
-        print('file already exists')
-    finally:
-        follows_load = load_follower_from_file(twitch_id)
-        if channel_follower_count - len(follows_load) <= 0:
-            print(f'Skip {channel_name}')
-            return
-        m = ((channel_follower_count - len(follows_load)) // 1000) + 1
-        for i in range(m):
-            print(f'{channel_name}: {i + 1}/{m}')
-            load_follower_and_write_to_file(cred, twitch_id, max_results=1000)
-        print(f'Done {channel_name}')
+        with open(f'data/follower/{twitch_id}.txt', 'a+', encoding='utf-16') as file:
+            file.write(data)
+        follower += result
+        last: TwitchFollowRelation = result[-1]
+        cursor = last.page
+        print(f'Done - {channel_name} {len(follower)}/{channel_follower_count}')
 
+    print(f'Done {channel_name} {twitch_id}')
 
-def channel_group_process(cred: TwitchCredentials, channel_lst: [(str, str, int)]):
-    for c in channel_lst:
-        channel_process(cred, c)
     pass
 
 
-if __name__ == '__main__':
+def multi_channel_process(cred: TwitchCredentials, channel_list: [(str, str, int)], max_results=1000):
+    for c in channel_list:
+        channel_process(cred, c, max_results=max_results)
+    print('multi_channel_process done')
+
+
+def load():
+    if not os.path.exists('data'):
+        os.makedirs('data')
+    if not os.path.exists('data/follower'):
+        os.makedirs('data/follower')
+    num_of_processes = 4
+    print('Loading Creds')
     creds = list(map(lambda c: get_cred(client_id=c[0], secret=c[1]), cred_list))
+    cred = creds[0]  # get_cred(client_id=clientID, secret=secret)
+    print('Loaded Creds')
 
-    channel_list = list(filter(lambda x: 50000 < x[2], get_total_follower_count(creds[0])))
-    sub_lsts = [[], [], [], []]
-    for i, c in enumerate(channel_list):
-        sub_lsts[i % 4].append(c)
-
-    processes: [Process] = []
-    for i, sub_lst in enumerate(sub_lsts):
+    print('Loading Channel')
+    sub_lists = get_balanced_channel_lists_2(cred, num_of_processes)
+    print('Loaded Channel')
+    print('Init Processes')
+    processes = []
+    for i, sub_list in enumerate(sub_lists):
         p = Process(
-            target=channel_group_process,
+            target=multi_channel_process,
             args=(
                 creds[i],
-                sub_lst
+                sub_list
             )
         )
-        p.start()
         processes.append(p)
+
+    print('Start Processes')
+    for p in processes:
+        p.start()
 
     for p in processes:
         p.join()
+
+
+if __name__ == '__main__':
+    load()
+    pass
