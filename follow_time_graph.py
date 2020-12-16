@@ -5,14 +5,14 @@ from plotly.subplots import make_subplots
 
 from channel import channel_list
 from follower_count import get_total_follower_count
-from load_follower_from_file import load_follower_from_file
+from load_follower_from_file import load_follower_relation_from_file
 from twitch_api import get_cred
 from twitch_cred import clientID, secret
 
 
 def __create_channel_follower_time_line(c: (str, str, int)):
     twitch_id, twitch_name, count = c
-    follows = load_follower_from_file(f"data/follower/{twitch_id}.txt")
+    follows = load_follower_relation_from_file(f"data/follower/{twitch_id}.txt")
     dates = list(map(lambda f: f.get_day(), follows))
     uniq_dates = set(dates)
 
@@ -24,7 +24,7 @@ def __create_channel_follower_time_line(c: (str, str, int)):
 
 def __create_figure(c: (str, str, int)):
     twitch_id, twitch_name, count = c
-    follows = load_follower_from_file(f"data/follower/{twitch_id}.txt")
+    follows = load_follower_relation_from_file(f"data/follower/{twitch_id}.txt")
     dates = list(map(lambda f: f.get_day(), follows))
     uniq_dates = set(dates)
 

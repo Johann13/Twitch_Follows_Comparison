@@ -1,17 +1,18 @@
 import os
 from multiprocessing import Process
 
-from follower_count import get_balanced_channel_lists_2, get_total_follower_count
-from load_follower_from_file import load_follower_from_file
+from channel import channel_list
+from follower_count import get_balanced_channel_lists_2
+from load_follower_from_file import load_follower_relation_from_file
 from twitch_api import get_cred, get_twitch_follower_relation, TwitchFollowRelation, TwitchCredentials
-from twitch_cred import cred_list, clientID, secret
+from twitch_cred import cred_list
 
 
 def channel_process(cred: TwitchCredentials, channel: (str, str, int), max_results=1000):
     twitch_id, channel_name, channel_follower_count = channel
-    if not os.path.exists(f'data/follower/{twitch_id}.txt'):
-        open(f'data/follower/{twitch_id}.txt', 'w').close()
-    follower = load_follower_from_file(f'data/follower/{twitch_id}.txt')
+    if not os.path.exists(f'data/follower_relations/{twitch_id}.txt'):
+        open(f'data/follower_relations/{twitch_id}.txt', 'w').close()
+    follower = load_follower_relation_from_file(f'data/follower_relations/{twitch_id}.txt')
     current_count = len(follower)
     if len(follower) >= channel_follower_count:
         print(f'Skip {channel_name}')
@@ -44,7 +45,7 @@ def channel_process(cred: TwitchCredentials, channel: (str, str, int), max_resul
         for i, follow in enumerate(result):
             data += f'{i + current_count} {follow.to_string()}\n'
 
-        with open(f'data/follower/{twitch_id}.txt', 'a+', encoding='utf-16') as file:
+        with open(f'data/follower_relations/{twitch_id}.txt', 'a+', encoding='utf-16') as file:
             file.write(data)
         follower += result
         last: TwitchFollowRelation = result[-1]
@@ -65,6 +66,8 @@ def multi_channel_process(cred: TwitchCredentials, channel_list: [(str, str, int
 def load():
     if not os.path.exists('data'):
         os.makedirs('data')
+    if not os.path.exists('data/follower_relations'):
+        os.makedirs('data/follower_relations')
     if not os.path.exists('data/follower'):
         os.makedirs('data/follower')
     num_of_processes = 4
@@ -96,6 +99,21 @@ def load():
         p.join()
 
 
+def translate(twitch_id: str):
+    print(f'translate {twitch_id}')
+    follower_relations = load_follower_relation_from_file(f'data/follower_relations/{twitch_id}.txt')
+    with open(f'data/follower/{twitch_id}.txt', 'w+') as file:
+        for f in follower_relations:
+            d = f.followed_at.split('T')[0]
+            file.write(f'{f.from_id} {d} {f.page}\n')
+
+def translate_all():
+    if not os.path.exists('data/follower'):
+        os.makedirs('data/follower')
+    for c in channel_list:
+        translate(c[0])
+
 if __name__ == '__main__':
-    load()
+    # load()
+
     pass

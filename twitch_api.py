@@ -53,6 +53,25 @@ class TwitchUser:
         return f'{self.twitch_id} {self.twitch_name}'
 
 
+class SimpleFollow:
+    def __init__(self, twitch_id: str, date: str):
+        self.twitch_id = twitch_id
+        self.date = date
+        pass
+
+    @classmethod
+    def from_line(cls, line: str):
+        words = list(line.split(' '))
+        return cls(words[0], words[1])
+
+    def get_date(self):
+        return datetime.strptime(self.date, '%Y-%m-%d')
+
+    def get_day(self):
+        date = self.get_date()
+        return f'{date.year}-{str(date.month).zfill(2)}-{str(date.day).zfill(2)}'
+
+
 class TwitchFollowRelation:
 
     def __init__(self, index: int, from_id: str, from_name: str,
@@ -203,7 +222,7 @@ def get_follower_count(cred: TwitchCredentials, twitch_id: str, ) -> int:
 
 
 '''
-Gets the follower recursively of a channel by twitch id
+Gets the follower_relations recursively of a channel by twitch id
 This can be changed to use the twitch name as well instead of the id
 If the bearer_toke is not provided the limit for API Requests is 30 per minute
 If provided it is 800 per minute
@@ -282,7 +301,7 @@ def get_channel_follower(twitch_id: str,
     total = json['total']
     prev_result['total'] = total
     if print_state:
-        print('found a total of ' + str(json['total']) + ' follower for channel ' + str(twitch_id))
+        print('found a total of ' + str(json['total']) + ' follower_relations for channel ' + str(twitch_id))
     prev_result['page'] = page
     for user_data in data:
         prev_result['data'].append({
@@ -377,7 +396,7 @@ def get_channel_follows(twitch_id: str,
     total = json['total']
     prev_result['total'] = total
     if print_state:
-        print('found a total of ' + str(json['total']) + ' follower for channel ' + str(twitch_id))
+        print('found a total of ' + str(json['total']) + ' follower_relations for channel ' + str(twitch_id))
     prev_result['page'] = page
     for user_data in data:
         prev_result['data'].append({
