@@ -4,7 +4,10 @@ channel_list: [(str, str)] = [
     ('15597175', 'alsmiffy'),
     ('219068259', 'AngoryTom'),
 
+    ('91904368', 'bobawitch'),
+
     ('145983935', 'Bekkiboom'),
+    ('150004439', 'bedgars'),
     ('52172280', 'bokoen'),
     ('113954840', 'bouphe'),
     ('64758947', 'Breeh'),
@@ -20,6 +23,7 @@ channel_list: [(str, str)] = [
 
     ('21945983', 'HatFilms'),
     ('197603698', 'highrollersdnd'),
+    ('27063689', 'hrry'),
 
     ('12131870', 'InTheLittleWood'),
     ('91990032', 'ispuuuv'),
@@ -41,7 +45,7 @@ channel_list: [(str, str)] = [
 
     ('38167015', 'Ravs_'),
     ('37569443', 'Rimmy'),
-    ('239617169', 'rossperu'),
+    ('239617169', 'Rossperu'),
     ('22168131', 'Rythian'),
 
     ('38180017', 'Sherlock_Hulmes'),
@@ -53,17 +57,11 @@ channel_list: [(str, str)] = [
     ('141902679', 'thespiffingbrit'),
 
     ('43903922', 'Vadact'),
-    ('27063689', 'VeteranHarry'),
     ('96502692', 'WilsonatorYT'),
     ('416016021', 'YogCon'),
     ('20786541', 'Yogscast'),
     ('38051463', 'ZoeyProasheck'),
     ('31883069', 'Zylush'),
-]
-
-todo = [
-    ('26538483', 'sips_'),
-    #('20786541', 'Yogscast'),
 ]
 
 # converting the list to a map

@@ -1,150 +1,21 @@
-from datetime import datetime
 import time
+
 import requests
 
-
-class TwitchCredentials:
-    def __init__(self, client_id, secret, token):
-        self.client_id = client_id
-        self.secret = secret
-        self.token = token
-        pass
-
-    def __str__(self):
-        return self.client_id
-
-    def __repr__(self):
-        return f'TwitchCredentials({self.client_id})'
-
-
-class TwitchResponse:
-
-    def __init__(self, response: requests.Response):
-        secs = int(round(time.time()))
-        self.json = response.json()
-        self.rate_limit_reset = int(response.headers['ratelimit-reset'])
-        self.diff = self.rate_limit_reset - secs
-        self.rate_limit_remaining = int(response.headers['ratelimit-remaining'])
-        self.rate_limit_limit = int(response.headers['ratelimit-limit'])
-        self.should_sleep = self.rate_limit_remaining <= 0
-        self.has_error = 'error' in self.json
-
-    pass
-
-    def __repr__(self):
-        return f'TwitchResponse({self.json})'
-
-    def __str__(self):
-        return f'{self.json}'
-
-
-class TwitchUser:
-    def __init__(self, twitch_id, twitch_name):
-        self.twitch_id = twitch_id
-        self.twitch_name = twitch_name
-
-    def __repr__(self):
-        return f'TwitchUser({self.twitch_id},{self.twitch_name})'
-
-    def __str__(self):
-        return self.to_string()
-
-    def to_string(self):
-        return f'{self.twitch_id} {self.twitch_name}'
-
-
-class SimpleFollow:
-    def __init__(self, twitch_id: str, date: str):
-        self.twitch_id = twitch_id
-        self.date = date
-        pass
-
-    @classmethod
-    def from_line(cls, line: str):
-        words = list(line.split(' '))
-        return cls(words[0], words[1])
-
-    def get_date(self):
-        return datetime.strptime(self.date, '%Y-%m-%d')
-
-    def get_day(self):
-        date = self.get_date()
-        return f'{date.year}-{str(date.month).zfill(2)}-{str(date.day).zfill(2)}'
-
-
-class TwitchFollowRelation:
-
-    def __init__(self, index: int, from_id: str, from_name: str,
-                 to_id: str, to_name: str,
-                 followed_at: str, page: str):
-        self.index = index
-        self.from_user = TwitchUser(from_id, from_name)
-        self.to_user = TwitchUser(to_id, to_name)
-        self.from_id = from_id
-        self.from_name = from_name
-        self.to_id = to_id
-        self.to_name = to_name
-        self.followed_at = followed_at
-        self.page = page
-        pass
-
-    @classmethod
-    def from_api(cls, data: {str: str}, page: str):
-        from_id = data['from_id']
-        from_name = data['from_name']
-        to_id = data['to_id']
-        to_name = data['to_name']
-        followed_at = data['followed_at']
-        page = page
-        return cls(0, from_id, from_name, to_id, to_name, followed_at, page)
-
-    @classmethod
-    def from_line(cls, line: str):
-        words = list(map(lambda s: s.replace(' ', ''), line.split(' ')))
-        if len(words) > 7:
-            words = list(filter(lambda s: s != '', words))
-        index = int(words[0])
-        from_id = words[1].replace('\n', '')
-        from_name = words[2].replace('\n', '')
-        to_id = words[3].replace('\n', '')
-        to_name = words[4].replace('\n', '')
-        followed_at = words[5].replace('\n', '')
-        if len(words) == 7:
-            page = words[6].replace('\n', '')
-        else:
-            page = None
-        return cls(index, from_id, from_name, to_id, to_name, followed_at, page)
-
-    def get_date(self):
-        return datetime.strptime(self.followed_at, '%Y-%m-%dT%H:%M:%SZ')
-
-    def get_day(self):
-        date = self.get_date()
-        return f'{date.year}-{str(date.month).zfill(2)}-{str(date.day).zfill(2)}'
-
-    def __repr__(self):
-        return f'TwitchFollowRelation({self.from_name},{self.to_name})'
-
-    def __str__(self):
-        return self.to_string()
-
-    def to_string(self):
-        return f'{self.from_id} {self.from_name} {self.to_id} {self.to_name} {self.followed_at} {self.page}'
-
-    def __eq__(self, other):
-        if other is TwitchFollowRelation:
-            return self.from_id == other.from_id and self.to_id == other.to_id
-        return False
-
-    def __hash__(self):
-        return int(f'{self.from_id}{self.to_id}')
+from models import TwitchCredentials, TwitchResponse, TwitchFollowRelation
 
 
 def twitch_api_get(
         twitch_url: str,
         cred: TwitchCredentials,
         params: {str: str}) -> TwitchResponse:
-    r""""""
+    """
+    Make a get request to the twitch api
+    :param twitch_url:
+    :param cred:
+    :param params:
+    :return:
+    """
     headers = {
         'Client-ID': cred.client_id,
         'Authorization': 'Bearer ' + cred.token
@@ -157,7 +28,13 @@ def twitch_api_post(
         twitch_url: str,
         cred: TwitchCredentials,
         params: {str: str}) -> TwitchResponse:
-    r""""""
+    """
+    Make a post request to the twitch api
+    :param twitch_url:
+    :param cred:
+    :param params:
+    :return:
+    """
     headers = {
         'Client-ID': cred.client_id,
         'Authorization': 'Bearer ' + cred.token
@@ -182,7 +59,7 @@ def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page
         )
     if resp.should_sleep:
         print('sleep')
-        time.sleep(32)
+        time.sleep(30)
         return __get_twitch_follower_relation(cred=cred, twitch_id=twitch_id, page=page)
     data = resp.json['data']
     cursor = None
@@ -192,10 +69,12 @@ def __get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, page
     return list(map(lambda d: TwitchFollowRelation.from_api(d, cursor), data)), cursor, resp.json['total']
 
 
-def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max_results=None, cursor='') \
+def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, twitch_name: str,
+                                 max_results=None, cursor='') \
         -> [TwitchFollowRelation]:
     total: int = 0
     result: [TwitchFollowRelation] = []
+    start_time = time.time()
     while len(result) < total or len(result) == 0:
         if cursor is None:
             break
@@ -204,10 +83,49 @@ def get_twitch_follower_relation(cred: TwitchCredentials, twitch_id: str, max_re
         if max_results is not None:
             if len(result) >= max_results:
                 break
-        resp = __get_twitch_follower_relation(cred=cred, twitch_id=twitch_id, page=cursor)
-        total = resp[2]
-        cursor = resp[1]
-        result += resp[0]
+        new_result, cursor, total = __get_twitch_follower_relation(cred=cred, twitch_id=twitch_id, page=cursor)
+        result += new_result
+        f: int = int((len(result) / total) * 100)
+        end_time = time.time()
+        diff_time = end_time - start_time
+
+        # print(f'total time = {((diff_time / len(new_result)) * total)}')
+        # print(f'needed = {(diff_time / len(new_result)) * len(result)}')
+
+        left = ((diff_time / len(result)) * total) \
+               - diff_time
+
+        # if f > 0:
+        #    if f % 10 == 0:
+
+        result_len = len(result)
+        n = twitch_name.ljust(15, ' ')
+        f_str = str(f).rjust(5, ' ')
+        left_str = str(int(left)).rjust(5, ' ')
+        diff_str = str(int(diff_time)).rjust(5, ' ')
+        s = f'{n}|{f_str}%|{left_str}s left|{diff_str}s spend'
+
+        if total <= 5000:
+            if result_len % 500 == 0:
+                print(s)
+        elif total <= 10000:
+            if result_len % 1000 == 0:
+                print(s)
+        elif total <= 25000:
+            if result_len % 1500 == 0:
+                print(s)
+        elif total <= 50000:
+            if result_len % 5000 == 0:
+                print(s)
+        elif total <= 75000:
+            if result_len % 10000 == 0:
+                print(s)
+        elif total <= 100000:
+            if result_len % 20000 == 0:
+                print(s)
+        else:
+            if result_len % 25000 == 0:
+                print(s)
 
     return result
 
@@ -221,14 +139,6 @@ def get_follower_count(cred: TwitchCredentials, twitch_id: str, ) -> int:
     return resp.json['total']
 
 
-'''
-Gets the follower_relations recursively of a channel by twitch id
-This can be changed to use the twitch name as well instead of the id
-If the bearer_toke is not provided the limit for API Requests is 30 per minute
-If provided it is 800 per minute
-'''
-
-
 def get_channel_follower(twitch_id: str,
                          client_id: str,
                          user_count: int,
@@ -240,6 +150,13 @@ def get_channel_follower(twitch_id: str,
                          print_state=False,
                          print_error=True,
                          print_headers=False) -> {}:
+    """
+    Gets the follower_relations recursively of a channel by twitch id
+    This can be changed to use the twitch name as well instead of the id
+    If the bearer_toke is not provided the limit for API Requests is 30 per minute
+    If provided it is 800 per minute
+    """
+
     if print_state:
         print('run get_channel_follower for ' + str(twitch_id))
     if prev_result is not None:
@@ -319,14 +236,6 @@ def get_channel_follower(twitch_id: str,
                                 print_headers=print_headers)
 
 
-'''
-Gets the follows recursively of a user by twitch id
-This can be changed to use the twitch name as well instead of the id
-If the bearer_toke is not provided the limit for API Requests is 30 per minute
-If provided it is 800 per minute
-'''
-
-
 def get_channel_follows(twitch_id: str,
                         client_id: str,
                         page: str = None,
@@ -336,6 +245,12 @@ def get_channel_follows(twitch_id: str,
                         print_state=False,
                         print_error=True,
                         print_headers=False) -> {}:
+    """
+    Gets the follows recursively of a user by twitch id
+    This can be changed to use the twitch name as well instead of the id
+    If the bearer_toke is not provided the limit for API Requests is 30 per minute
+    If provided it is 800 per minute
+    """
     if print_state:
         print('run get_channel_follower for ' + str(twitch_id))
     if prev_result is None:
@@ -414,12 +329,10 @@ def get_channel_follows(twitch_id: str,
                                print_headers=print_headers)
 
 
-'''
-Get the bearer token
-'''
-
-
 def __get_bearer_token(client_id: str, secret: str) -> {}:
+    '''
+    Get the bearer token
+    '''
     twitch_url = 'https://id.twitch.tv/oauth2/token'
     params = {
         'client_id': client_id,
