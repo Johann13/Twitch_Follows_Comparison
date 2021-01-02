@@ -236,6 +236,12 @@ def get_channel_follower(twitch_id: str,
                                 print_headers=print_headers)
 
 
+def get_channel_follows_ids(twitch_id: str,
+                            cred: TwitchCredentials, ) -> [str]:
+    r = get_channel_follows(twitch_id, cred.client_id, bearer_token=cred.token)
+    return list(map(lambda f: f['id'], r['data']))
+
+
 def get_channel_follows(twitch_id: str,
                         client_id: str,
                         page: str = None,
