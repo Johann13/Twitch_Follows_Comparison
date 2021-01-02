@@ -127,4 +127,6 @@ dmypy.json
 *.xml
 .idea/workspace.xml
 .idea/workspace.xml
-data/
+/data/
+/data.zip
+/data (2).zip
